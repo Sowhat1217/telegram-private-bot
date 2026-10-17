@@ -6,12 +6,10 @@ compatibility_date = "2024-11-30"
 # keep_vars = true 可避免部署清掉后台里的 BOT_TOKEN / SUPERGROUP_ID 等变量。
 keep_vars = true
 
-# 若使用 Git 连接部署，必须在这里声明 KV 绑定，否则后台绑定会被覆盖。
-# 把 id 换成你自己的 KV Namespace ID（Cloudflare → Storage & Databases → KV）。
-# 不要提交别人的 namespace id。
-# [[kv_namespaces]]
-# binding = "TOPIC_MAP"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# Git 连接部署时必须声明 KV 绑定，否则后台绑定会被覆盖。
+[[kv_namespaces]]
+binding = "TOPIC_MAP"
+id = "eebb8094c2ef4799bf7b3d3d236140a6"
 
 # 建议在 Cloudflare 后台 Worker Settings → Variables 中配置：
 #   必需：BOT_TOKEN、SUPERGROUP_ID
