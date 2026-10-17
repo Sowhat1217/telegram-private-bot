@@ -23,28 +23,37 @@
 
 ### 必需配置
 
-| 名称 | 说明 |
-| :--- | :--- |
-| KV 绑定 `TOPIC_MAP` | 存储话题映射、验证状态 |
-| `BOT_TOKEN` | Bot Token |
-| `SUPERGROUP_ID` | 管理员群 ID（`-100` 开头） |
+KV 不是环境变量，而是 Cloudflare 的键值数据库（Workers KV）。机器人用它记住「哪个用户对应哪个话题」、验证状态、封禁名单。控制台左侧 **存储和数据库** 里创建，再绑到 Worker 上。
 
-可选：`TURNSTILE_SITEKEY` / `TURNSTILE_SECRET`（人机验证）、`PUBLIC_BASE_URL`（自定义域名）、`SPAM_KEYWORDS`（额外屏蔽词，逗号分隔）、`SPAM_SILENCE_MODE=true`（拦截时不通知管理员）、`WEBHOOK_SECRET`（校验 webhook）。
+| 名称 | 放哪 | 说明 |
+| :--- | :--- | :--- |
+| `TOPIC_MAP` | 设置 → **绑定** | KV 命名空间绑定，变量名必须是 `TOPIC_MAP` |
+| `BOT_TOKEN` | 设置 → **运行时变量和机密** | Bot Token |
+| `SUPERGROUP_ID` | 设置 → **运行时变量和机密** | 管理员群 ID（`-100` 开头） |
 
-Git 连接部署时，在 `wrangler.toml` 取消注释 `[[kv_namespaces]]`，填入你自己的 KV Namespace ID，并保留 `keep_vars = true`。
+可选变量同样加在「运行时变量和机密」：`TURNSTILE_SITEKEY` / `TURNSTILE_SECRET`、`PUBLIC_BASE_URL`、`SPAM_KEYWORDS`、`SPAM_SILENCE_MODE`、`WEBHOOK_SECRET`。
+
+#### 创建并绑定 KV
+
+1. 左侧 **存储和数据库** → **KV** → **创建命名空间**，名字随意（例如 `TOPIC_MAP`）。
+2. 回到 Worker **telegram-private-bot** → **设置**。
+3. 在 **绑定** 这一栏点 **添加绑定** → 选 **KV 命名空间**。
+4. 变量名填 `TOPIC_MAP`（必须全大写），命名空间选刚创建的那个，保存。
+
+Git 连接部署时，打开 `wrangler.toml`，取消注释 `[[kv_namespaces]]`，把 `id` 换成该 KV 命名空间的 ID（KV 详情页可以复制），并保留 `keep_vars = true`。
 
 ### 方法一：Git 连接（推荐）
 
 1. Fork 本仓库。
 2. Cloudflare Dashboard → **Workers & Pages** → **Create Application** → **Connect to Git**，选择该仓库并部署。
-3. 进入 Worker **Settings**，绑定 KV `TOPIC_MAP`，添加 `BOT_TOKEN`、`SUPERGROUP_ID`。
-4. 打开 **Deployments**，对最新记录点 **Retry deployment**，让变量生效。
+3. 按上面步骤创建并绑定 KV `TOPIC_MAP`；在 **运行时变量和机密** 添加 `BOT_TOKEN`、`SUPERGROUP_ID`。
+4. 打开 **Deployments**，对最新记录点 **Retry deployment**，让配置生效。
 
 ### 方法二：手动粘贴
 
 1. Cloudflare → **Workers & Pages** → **Create Worker**。
 2. **Edit code**，用本仓库 `worker.js` 覆盖后 Deploy。
-3. **Settings → Variables**：绑定 `TOPIC_MAP`，添加 `BOT_TOKEN`、`SUPERGROUP_ID`，保存并部署。
+3. 按上面步骤绑定 KV `TOPIC_MAP`，并添加 `BOT_TOKEN`、`SUPERGROUP_ID`，保存并部署。
 
 ### 激活 Webhook
 
