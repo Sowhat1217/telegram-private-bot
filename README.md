@@ -15,56 +15,83 @@
 
 ## 部署
 
-### 准备
+按下面顺序做。Cloudflare 控制台用中文界面时，名称以你屏幕上看到的为准。
 
-1. 用 [@BotFather](https://t.me/BotFather) 创建 Bot，拿到 Token。关闭 **Group Privacy**。
-2. 建一个开启 **Topics** 的群，把 Bot 拉进去并设为管理员（需要 Manage Topics）。
-3. 群 ID 必须以 `-100` 开头。桌面端复制消息链接，链接里的 `-100xxxxxxxxxx` 就是 `SUPERGROUP_ID`；若只有纯数字，前面补上 `-100`。
+### 1. 准备 Telegram
 
-### 必需配置
+1. 打开 [@BotFather](https://t.me/BotFather)，发送 `/newbot`，按提示创建，复制 **Token**。
+2. 发送 `/mybots` → 选中这个 Bot → **Bot Settings** → **Group Privacy** → **Turn off**。
+3. 新建一个群（只给你自己当收件箱用），把 Bot 拉进去。
+4. 在群设置里打开 **话题 / Topics**。
+5. 把 Bot 设为管理员，权限里勾选 **管理话题 / Manage Topics**。
+6. 用 Telegram **桌面端**，在群里任意消息上右键 → **复制消息链接**。  
+   链接中的 `-100xxxxxxxxxx` 就是 `SUPERGROUP_ID`。如果只有纯数字，前面自己补上 `-100`。
 
-KV 不是环境变量，而是 Cloudflare 的键值数据库（Workers KV）。机器人用它记住「哪个用户对应哪个话题」、验证状态、封禁名单。控制台左侧 **存储和数据库** 里创建，再绑到 Worker 上。
+### 2. 部署 Worker
 
-| 名称 | 放哪 | 说明 |
-| :--- | :--- | :--- |
-| `TOPIC_MAP` | 设置 → **绑定** | KV 命名空间绑定，变量名必须是 `TOPIC_MAP` |
-| `BOT_TOKEN` | 设置 → **运行时变量和机密** | Bot Token |
-| `SUPERGROUP_ID` | 设置 → **运行时变量和机密** | 管理员群 ID（`-100` 开头） |
+打开 [Cloudflare Dashboard](https://dash.cloudflare.com/) → 左侧 **Workers 和 Pages**。
 
-可选变量同样加在「运行时变量和机密」：`TURNSTILE_SITEKEY` / `TURNSTILE_SECRET`、`PUBLIC_BASE_URL`、`SPAM_KEYWORDS`、`SPAM_SILENCE_MODE`、`WEBHOOK_SECRET`。
+**方法一：连接 GitHub（推荐）**
 
-#### 创建并绑定 KV
+1. 点 **创建** → 连接到 Git，选择本仓库，部署。
+2. 部署完成后点进 Worker `telegram-private-bot`。
 
-1. 左侧 **存储和数据库** → **KV** → **创建命名空间**，名字随意（例如 `TOPIC_MAP`）。
-2. 回到 Worker **telegram-private-bot** → **设置**。
-3. 在 **绑定** 这一栏点 **添加绑定** → 选 **KV 命名空间**。
-4. 变量名填 `TOPIC_MAP`（必须全大写），命名空间选刚创建的那个，保存。
+**方法二：手动粘贴**
 
-Git 连接部署时，打开 `wrangler.toml`，取消注释 `[[kv_namespaces]]`，把 `id` 换成该 KV 命名空间的 ID（KV 详情页可以复制），并保留 `keep_vars = true`。
+1. 点 **创建** → **创建 Worker**。
+2. 点 **编辑代码**，用本仓库 `worker.js` 全部覆盖后，点右上角部署。
 
-### 方法一：Git 连接（推荐）
+### 3. 创建并绑定 KV
 
-1. Fork 本仓库。
-2. Cloudflare Dashboard → **Workers & Pages** → **Create Application** → **Connect to Git**，选择该仓库并部署。
-3. 按上面步骤创建并绑定 KV `TOPIC_MAP`；在 **运行时变量和机密** 添加 `BOT_TOKEN`、`SUPERGROUP_ID`。
-4. 打开 **Deployments**，对最新记录点 **Retry deployment**，让配置生效。
+KV 是一块小数据库，用来存「谁对应哪个话题」。**不要在 Worker 的「运行时变量和密钥」里找它。**
 
-### 方法二：手动粘贴
+创建入口在 Cloudflare 控制台**最左侧栏**：
 
-1. Cloudflare → **Workers & Pages** → **Create Worker**。
-2. **Edit code**，用本仓库 `worker.js` 覆盖后 Deploy。
-3. 按上面步骤绑定 KV `TOPIC_MAP`，并添加 `BOT_TOKEN`、`SUPERGROUP_ID`，保存并部署。
+1. 点左侧 **存储和数据库**（点文字旁的小三角展开）。
+2. 在展开列表里点 **Workers KV**（它在「Postgres 和 MySQL 数据库」下面、「D1 SQLite 数据库」上面）。
+3. 点 **创建命名空间**，名字随意，例如 `TOPIC_MAP`。
+4. 再回到 Worker 页面，顶部标签点 **设置**（和「概述、指标、部署」同一排）。
+5. 向下找到 **绑定**（在「运行时变量和密钥」下面那一栏），点右侧 **添加绑定**。
+6. 类型选 **KV 命名空间**。  
+   **名称**填 `TOPIC_MAP`（必须全大写）。  
+   **值 / 命名空间**选刚刚创建的那个。保存。
 
-### 激活 Webhook
+### 4. 填写运行时变量和密钥
 
-浏览器访问：
+仍在 Worker → **设置**。最上面一栏叫 **运行时变量和密钥**。
+
+点右侧 **添加变量**，加两条：
+
+| 名称 | 填什么 |
+| :--- | :--- |
+| `BOT_TOKEN` | 第 1 步 BotFather 给你的 Token |
+| `SUPERGROUP_ID` | 第 1 步复制的群 ID，必须 `-100` 开头 |
+
+保存。Cloudflare 通常会自动再部署一次，等状态变绿即可。
+
+如果出现黄条「更新您的 Wrangler 配置……」：点黄条里的 **wrangler.toml**，把 `[[kv_namespaces]]` 下面那串 `id` 填进本仓库的 `wrangler.toml`，再推送到 GitHub。不要把 `BOT_TOKEN` 写进文件。
+
+可选变量也加在这一栏，不配也能用：`TURNSTILE_SITEKEY`、`TURNSTILE_SECRET`、`PUBLIC_BASE_URL`、`SPAM_KEYWORDS`、`SPAM_SILENCE_MODE`、`WEBHOOK_SECRET`。
+
+### 5. 设置 Webhook
+
+1. Worker 顶部点 **概述** 或 **域**，复制地址，形如 `https://telegram-private-bot.xxx.workers.dev`。要带 `https://`，末尾不要 `/`。
+2. 用浏览器打开（两处换成你的值）：
 
 ```
-https://api.telegram.org/bot<YOUR_TOKEN>/setWebhook?url=<YOUR_WORKER_URL>
+https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=<Worker地址>
 ```
 
-若设置了 `WEBHOOK_SECRET`，在 URL 末尾加上 `&secret_token=<WEBHOOK_SECRET>`。
+3. 看到 `Webhook was set` 或 `Webhook is already set` 后，再打开：
 
-返回 `{"ok":true,"result":true,"description":"Webhook was set"}` 即部署成功。
+```
+https://api.telegram.org/bot<BOT_TOKEN>/getWebhookInfo
+```
 
-使用 Turnstile 时，还需要：在 Cloudflare Turnstile 添加 Worker 域名，并把同一域名登记到 BotFather 的 Mini App Domain。验证消息里同时提供浏览器备用链接。
+确认返回里的 `url` 就是你的 Worker 地址。
+
+如果配置了 `WEBHOOK_SECRET`，setWebhook 的链接末尾还要加 `&secret_token=同一个值`。
+
+### 6. 检查是否成功
+
+给 Bot 发 `/start`，应弹出人机验证。通过后再发一句普通文字，管理群里会出现该用户的话题；进这个话题打字即可回复对方。
