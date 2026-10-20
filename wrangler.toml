@@ -10,6 +10,11 @@ keep_vars = true
 [[kv_namespaces]]
 binding = "TOPIC_MAP"
 id = "ca530b2c11b245ee8920a315a52d549e"
+# ...
+[vars]
+SUPERGROUP_ID = "-1004473604816"
+# ...
+
 
 # 建议在 Cloudflare 后台 Worker Settings → Variables 中配置：
 #   必需：BOT_TOKEN、SUPERGROUP_ID
